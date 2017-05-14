@@ -18,7 +18,7 @@ UKF::UKF() {
   // if this is false, radar measurements will be ignored (except during init)
   use_radar_ = true;
 
-  // initial state vector
+  // initial state vector (px, py, vx, vy, rho, rho_dot)
   x_ = VectorXd(5);
 
   // initial covariance matrix
@@ -80,6 +80,40 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
   Complete this function! Make sure you switch between lidar and radar
   measurements.
   */
+
+  if (!is_initialized_) {
+
+    // initialize covariance matrix
+    P << 1, 0, 0, 0 , 0,
+        0, 1, 0, 0, 0,
+        0, 0, 1, 0, 0,
+        0, 0, 0, 1, 0,
+        0, 0, 0, 0, 1;
+
+    if(meas_package.sensor_type_ == MeasurementPackage::RADAR) {
+      float rho, phi, rho_dot;
+      rho = measurement_pack.raw_measurements_[0];
+      phi = measurement_pack.raw_measurements_[1];
+      rho_dot = measurement_pack.raw_measurements_[2];
+      x_[0] = rho * cos(phi);
+      x_[1] = rho * sin(phi);
+      x_[2] = rho_dot * sin(phi);
+      x_[3] = rho_dot * cos(phi);
+    }
+    else if(measurement_pack.sensor_type_ == MeasurementPackage::LASER) {
+      x_[0] = measurement_pack.raw_measurements_[0];
+      x_[1] = measurement_pack.raw_measurements_[1];
+    }
+
+    time_us_ = measurement_pack.timestamp_; // get time
+
+    // finish initialization
+    is_initialized_ = true;
+    return;
+  }
+
+
+
 }
 
 /**
