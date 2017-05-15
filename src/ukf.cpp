@@ -18,7 +18,7 @@ UKF::UKF() {
   // if this is false, radar measurements will be ignored (except during init)
   use_radar_ = true;
 
-  // initial state vector (px, py, vx, vy, rho, rho_dot)
+  // initial state vector (px, py, vx, vy, rho)
   x_ = VectorXd(5);
 
   // initial covariance matrix
@@ -56,14 +56,23 @@ UKF::UKF() {
   // for first call of ProcessMeasurement
   is_initialized_ = false;
 
+  ///* predicted sigma points matrix
+  Xsig_pred_ = MatrixXd(15,5);
+
   // time when the state is true, in us
   time_us_ = 0;
 
   // State dimension
   n_x_ = 5;
 
+  // Augmented state dimension
+  n_aug_ = 7;
+
   // Sigma point spreading parameter
   lambda_ = 3 - n_x_;
+
+  // Weights of sigma points
+  weights = VectorXd(2*n_aug+1);
 
 }
 
@@ -84,7 +93,7 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
   if (!is_initialized_) {
 
     // initialize covariance matrix
-    P << 1, 0, 0, 0 , 0,
+    P_ << 1, 0, 0, 0 , 0,
         0, 1, 0, 0, 0,
         0, 0, 1, 0, 0,
         0, 0, 0, 1, 0,
@@ -113,6 +122,19 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
   }
 
 
+  /** Prediction =======
+  // 1. Generate Sigma points
+  // 2. Predict Sigma points
+  // 3. Predict Mean and covariance **/
+  float deltaTime = (measurement_pack.timestamp_ - time_us_) / 1000000.0;
+  time_us_ = measurement_pack.timestamp_;
+
+  UKF::Prediction(deltaTime);
+
+  /** Update =======
+  // 1. Predict Measurement
+  // 2. Update State **/
+
 
 }
 
@@ -128,6 +150,35 @@ void UKF::Prediction(double delta_t) {
   Complete this function! Estimate the object's location. Modify the state
   vector, x_. Predict sigma points, the state, and the state covariance matrix.
   */
+  MatrixXd Xsig
+
+}
+
+void UKF::GenerateSigmaPoints(MatrixXd* Xsig_out) {
+
+  //set state dimension
+  int n_x = 5;
+
+  //define spreading parameter
+  double lambda = 3 - n_x;
+
+  //create sigma point matrix
+  MatrixXd Xsig = MatrixXd(n_x, 2 * n_x + 1);
+
+  //calculate square root of P
+  MatrixXd A = P_.llt().matrixL();
+
+  //set first column of sigma point matrix
+  Xsig.col(0)  = x_;
+
+  //set remaining sigma points
+  for (int i = 0; i < n_x; i++)
+  {
+    Xsig.col(i+1)     = x + sqrt(lambda+n_x) * A.col(i);
+    Xsig.col(i+1+n_x) = x - sqrt(lambda+n_x) * A.col(i);
+  }
+
+  *Xsig_out = Xsig;
 }
 
 /**
