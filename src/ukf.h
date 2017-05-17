@@ -97,6 +97,11 @@ public:
    */
   void Prediction(double delta_t);
 
+  // Part of Prediction Chain
+  MatrixXd SPP_Helper_AugmentedSigmaPoints();
+  void SigmaPointPrediction(MatrixXd* Xsig_pred_, double delta_t);
+  void PredictMeanAndCovariance(VectorXd* x_out, MatrixXd* P_out);
+
   /**
    * Updates the state and the state covariance matrix using a laser measurement
    * @param meas_package The measurement at k+1
