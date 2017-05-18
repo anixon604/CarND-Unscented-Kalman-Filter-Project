@@ -102,6 +102,9 @@ public:
   void SigmaPointPrediction(MatrixXd* Xsig_pred_, double delta_t);
   void PredictMeanAndCovariance(VectorXd* x_out, MatrixXd* P_out);
 
+  // Part of Update Chain
+  void PredictRadarMeasurement(VectorXd* z_out, MatrixXd* S_out);
+
   /**
    * Updates the state and the state covariance matrix using a laser measurement
    * @param meas_package The measurement at k+1
