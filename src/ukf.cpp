@@ -74,6 +74,14 @@ UKF::UKF() {
   // Weights of sigma points
   weights_ = VectorXd(2*n_aug_+1);
 
+  // set weights
+  double weight_0 = lambda_/(lambda_+n_aug_);
+  weights_(0) = weight_0;
+  for (int i=1; i<2*n_aug_+1; i++) {  //2n+1 weights
+    double weight = 0.5/(n_aug_+lambda_);
+    weights_(i) = weight;
+  }
+
 
 }
 
@@ -190,7 +198,7 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
         meas_package.raw_measurements_[2];
 
   UKF::PredictRadarMeasurement();
-  //UKF::UpdateState();
+  UKF::UpdateState();
 
 }
 
@@ -366,13 +374,6 @@ void UKF::Prediction(double delta_t) {
 }
 
 void UKF::PredictMeanAndCovariance() {
-  // set weights
-  double weight_0 = lambda_/(lambda_+n_aug_);
-  weights_(0) = weight_0;
-  for (int i=1; i<2*n_aug_+1; i++) {  //2n+1 weights
-    double weight = 0.5/(n_aug_+lambda_);
-    weights_(i) = weight;
-  }
 
   //predicted state mean
   x_.fill(0.0);
