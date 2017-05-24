@@ -114,8 +114,8 @@ public:
 
   // Part of Prediction Chain
   MatrixXd SPP_Helper_AugmentedSigmaPoints();
-  void SigmaPointPrediction(MatrixXd* Xsig_pred_, double delta_t);
-  void PredictMeanAndCovariance(VectorXd* x_out, MatrixXd* P_out);
+  void SigmaPointPrediction(double delta_t);
+  void PredictMeanAndCovariance();
 
   // Part of Update Chain
   void PredictRadarMeasurement();

@@ -358,14 +358,14 @@ void UKF::Prediction(double delta_t) {
   */
 
   // Predict Sigma Points
-  UKF::SigmaPointPrediction(&Xsig_pred_, delta_t);
-  UKF::PredictMeanAndCovariance(&x_, &P_);
+  UKF::SigmaPointPrediction(delta_t);
+  UKF::PredictMeanAndCovariance();
   // std::cout << Xsig_pred_ << std::endl;
   // std::cout << "ONE PUSH" << std::endl;
 
 }
 
-void UKF::PredictMeanAndCovariance(VectorXd* x_out, MatrixXd* P_out) {
+void UKF::PredictMeanAndCovariance() {
   // set weights
   double weight_0 = lambda_/(lambda_+n_aug_);
   weights_(0) = weight_0;
@@ -432,11 +432,11 @@ MatrixXd UKF::SPP_Helper_AugmentedSigmaPoints() {
 
 }
 
-void UKF::SigmaPointPrediction(MatrixXd* Xsig_out, double delta_t) {
+void UKF::SigmaPointPrediction(double delta_t) {
 
   MatrixXd Xsig_aug = UKF::SPP_Helper_AugmentedSigmaPoints();
   //create matrix with predicted sigma points as columns
-  MatrixXd Xsig_pred = MatrixXd(n_x_, 2 * n_aug_ + 1);
+  Xsig_pred_ = MatrixXd(n_x_, 2 * n_aug_ + 1);
 
   //predict sigma points
   for (int i = 0; i< 2*n_aug_+1; i++)
@@ -476,14 +476,11 @@ void UKF::SigmaPointPrediction(MatrixXd* Xsig_out, double delta_t) {
     yawd_p = yawd_p + nu_yawdd*delta_t;
 
     //write predicted sigma point into right column
-    Xsig_pred(0,i) = px_p;
-    Xsig_pred(1,i) = py_p;
-    Xsig_pred(2,i) = v_p;
-    Xsig_pred(3,i) = yaw_p;
-    Xsig_pred(4,i) = yawd_p;
+    Xsig_pred_(0,i) = px_p;
+    Xsig_pred_(1,i) = py_p;
+    Xsig_pred_(2,i) = v_p;
+    Xsig_pred_(3,i) = yaw_p;
+    Xsig_pred_(4,i) = yawd_p;
   }
-
-  //write result
-  *Xsig_out = Xsig_pred;
 
 }
