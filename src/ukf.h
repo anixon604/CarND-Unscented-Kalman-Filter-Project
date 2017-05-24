@@ -23,15 +23,6 @@ public:
   ///* if this is false, radar measurements will be ignored (except for init)
   bool use_radar_;
 
-  ///* state vector: [pos1 pos2 vel_abs yaw_angle yaw_rate] in SI units and rad
-  VectorXd x_;
-
-  ///* state covariance matrix
-  MatrixXd P_;
-
-  ///* predicted sigma points matrix
-  MatrixXd Xsig_pred_;
-
   ///* time when the state is true, in us
   long long time_us_;
 
@@ -68,6 +59,30 @@ public:
   ///* Sigma point spreading parameter
   double lambda_;
 
+  ///* state vector: [pos1 pos2 vel_abs yaw_angle yaw_rate] in SI units and rad
+  VectorXd x_;
+
+  ///* state covariance matrix
+  MatrixXd P_;
+
+  ///* predicted sigma points matrix
+  MatrixXd Xsig_pred_;
+
+  //set measurement dimension assigned by radar or laser
+  int n_z_;
+
+  //create matrix for sigma points in measurement space
+  MatrixXd Zsig_;
+
+  // radar measurement vector
+  VectorXd z_;
+
+  //z_pred for measurement Prediction
+  VectorXd z_pred_;
+
+  // matrix for measurement covariance
+  MatrixXd S_;
+
   ///* the current NIS for radar
   double NIS_radar_;
 
@@ -103,7 +118,9 @@ public:
   void PredictMeanAndCovariance(VectorXd* x_out, MatrixXd* P_out);
 
   // Part of Update Chain
-  void PredictRadarMeasurement(VectorXd* z_out, MatrixXd* S_out);
+  void PredictRadarMeasurement();
+  void PredictLaserMeasurement();
+  void UpdateState();
 
   /**
    * Updates the state and the state covariance matrix using a laser measurement
