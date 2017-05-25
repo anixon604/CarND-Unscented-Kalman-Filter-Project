@@ -13,7 +13,7 @@ using std::vector;
  */
 UKF::UKF() {
   // if this is false, laser measurements will be ignored (except during init)
-  use_laser_ = false;
+  use_laser_ = true;
 
   // if this is false, radar measurements will be ignored (except during init)
   use_radar_ = true;
@@ -24,11 +24,12 @@ UKF::UKF() {
   // state covariance matrix
   P_ = MatrixXd(5, 5);
 
+  // PROCESS NOISES ARE TUNEABLE
   // Process noise standard deviation longitudinal acceleration in m/s^2
-  std_a_ = 30;
-
+  std_a_ = 0.74; // 15mph -> m/s / 5sec squared
   // Process noise standard deviation yaw acceleration in rad/s^2
-  std_yawdd_ = 30;
+  std_yawdd_ = 3.7; // 15deg squared
+  // END PROCESS NOISES
 
   // Laser measurement noise standard deviation position1 in m
   std_laspx_ = 0.15;
@@ -44,14 +45,6 @@ UKF::UKF() {
 
   // Radar measurement noise standard deviation radius change in m/s
   std_radrd_ = 0.3;
-
-  /**
-  TODO:
-
-  Complete the initialization. See ukf.h for other member properties.
-
-  Hint: one or more values initialized above might be wildly off...
-  */
 
   // for first call of ProcessMeasurement
   is_initialized_ = false;
@@ -82,6 +75,8 @@ UKF::UKF() {
     weights_(i) = weight;
   }
 
+  // set testCounter
+  testCounter = 0;
 
 }
 
@@ -130,14 +125,12 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
     return;
   }
 
-
   /** Prediction =======
   // 1. Generate Sigma points
   // 2. Predict Sigma points
   // 3. Predict Mean and covariance **/
   float deltaTime = (meas_package.timestamp_ - time_us_) / 1000000.0;
   time_us_ = meas_package.timestamp_;
-
   UKF::Prediction(deltaTime);
 
   /** Update =======
@@ -163,19 +156,17 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
 void UKF::UpdateLidar(MeasurementPackage meas_package) {
   /**
   TODO:
-
   Complete this function! Use lidar data to update the belief about the object's
   position. Modify the state vector, x_, and covariance, P_.
-
   You'll also need to calculate the lidar NIS.
   */
+
   z_ = VectorXd(n_z_);
   z_ << meas_package.raw_measurements_[0],
         meas_package.raw_measurements_[1];
 
   UKF::PredictLaserMeasurement();
-  UKF::UpdateState();
-
+  UKF::UpdateState(meas_package);
 }
 
 /**
@@ -185,10 +176,8 @@ void UKF::UpdateLidar(MeasurementPackage meas_package) {
 void UKF::UpdateRadar(MeasurementPackage meas_package) {
   /**
   TODO:
-
   Complete this function! Use radar data to update the belief about the object's
   position. Modify the state vector, x_, and covariance, P_.
-
   You'll also need to calculate the radar NIS.
   */
 
@@ -198,11 +187,11 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
         meas_package.raw_measurements_[2];
 
   UKF::PredictRadarMeasurement();
-  UKF::UpdateState();
+  UKF::UpdateState(meas_package);
 
 }
 
-void UKF::UpdateState() {
+void UKF::UpdateState(MeasurementPackage meas_package) {
 
   //create matrix for cross correlation Tc
   MatrixXd Tc = MatrixXd(n_x_, n_z_);
@@ -213,15 +202,21 @@ void UKF::UpdateState() {
 
     //residual
     VectorXd z_diff = Zsig_.col(i) - z_pred_;
-    //angle normalization
-    while (z_diff(1)> M_PI) z_diff(1)-=2.*M_PI;
-    while (z_diff(1)<-M_PI) z_diff(1)+=2.*M_PI;
+
+    if(meas_package.sensor_type_ == MeasurementPackage::RADAR) {
+      //angle normalization
+      while (z_diff(1)> M_PI) z_diff(1)-=2.*M_PI;
+      while (z_diff(1)<-M_PI) z_diff(1)+=2.*M_PI;
+    }
 
     // state difference
     VectorXd x_diff = Xsig_pred_.col(i) - x_;
-    //angle normalization
-    while (x_diff(3)> M_PI) x_diff(3)-=2.*M_PI;
-    while (x_diff(3)<-M_PI) x_diff(3)+=2.*M_PI;
+
+    if(meas_package.sensor_type_ == MeasurementPackage::RADAR) {
+      //angle normalization
+      while (x_diff(3)> M_PI) x_diff(3)-=2.*M_PI;
+      while (x_diff(3)<-M_PI) x_diff(3)+=2.*M_PI;
+    }
 
     Tc = Tc + weights_(i) * x_diff * z_diff.transpose();
   }
@@ -232,9 +227,11 @@ void UKF::UpdateState() {
   //residual
   VectorXd z_diff = z_ - z_pred_;
 
-  //angle normalization
-  while (z_diff(1)> M_PI) z_diff(1)-=2.*M_PI;
-  while (z_diff(1)<-M_PI) z_diff(1)+=2.*M_PI;
+  if(meas_package.sensor_type_ == MeasurementPackage::RADAR) {
+    //angle normalization
+    while (z_diff(1)> M_PI) z_diff(1)-=2.*M_PI;
+    while (z_diff(1)<-M_PI) z_diff(1)+=2.*M_PI;
+  }
 
   //update state mean and covariance matrix
   x_ = x_ + K * z_diff;
@@ -274,23 +271,14 @@ void UKF::PredictLaserMeasurement() {
     //residual
     VectorXd z_diff = Zsig_.col(i) - z_pred_;
 
-    //angle normalization
-    while (z_diff(1)> M_PI) z_diff(1)-=2.*M_PI;
-    while (z_diff(1)<-M_PI) z_diff(1)+=2.*M_PI;
-
     S_ = S_ + weights_(i) * z_diff * z_diff.transpose();
   }
 
   //add measurement noise covariance matrix
   MatrixXd R = MatrixXd(n_z_,n_z_);
-  R <<    std_radr_*std_radr_, 0, 0,
-          0, std_radphi_*std_radphi_, 0,
-          0, 0,std_radrd_*std_radrd_;
+  R <<    std_laspx_*std_laspx_, 0,
+          0, std_laspy_*std_laspy_;
   S_ = S_ + R;
-
-  // //print result
-  // std::cout << "z_pred: " << std::endl << z_pred << std::endl;
-  //std::cout << "S: " << std::endl << S << std::endl;
 
 }
 
@@ -346,10 +334,6 @@ void UKF::PredictRadarMeasurement() {
           0, 0,std_radrd_*std_radrd_;
   S_ = S_ + R;
 
-  // //print result
-  // std::cout << "z_pred: " << std::endl << z_pred << std::endl;
-  //std::cout << "S: " << std::endl << S << std::endl;
-
 }
 
 /**
@@ -368,8 +352,6 @@ void UKF::Prediction(double delta_t) {
   // Predict Sigma Points
   UKF::SigmaPointPrediction(delta_t);
   UKF::PredictMeanAndCovariance();
-  // std::cout << Xsig_pred_ << std::endl;
-  // std::cout << "ONE PUSH" << std::endl;
 
 }
 
@@ -380,13 +362,13 @@ void UKF::PredictMeanAndCovariance() {
   for (int i = 0; i < 2 * n_aug_ + 1; i++) {  //iterate over sigma points
     x_ = x_+ weights_(i) * Xsig_pred_.col(i);
   }
-
   //predicted state covariance matrix
   P_.fill(0.0);
   for (int i = 0; i < 2 * n_aug_ + 1; i++) {  //iterate over sigma points
 
     // state difference
     VectorXd x_diff = Xsig_pred_.col(i) - x_;
+
     //angle normalization
     while (x_diff(3)> M_PI) x_diff(3)-=2.*M_PI;
     while (x_diff(3)<-M_PI) x_diff(3)+=2.*M_PI;
