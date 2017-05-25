@@ -74,7 +74,7 @@ public:
   //create matrix for sigma points in measurement space
   MatrixXd Zsig_;
 
-  // radar measurement vector
+  // radar - laser measurement vector
   VectorXd z_;
 
   //z_pred for measurement Prediction
@@ -88,6 +88,12 @@ public:
 
   ///* the current NIS for laser
   double NIS_laser_;
+
+  // List of NIS values for both radar and laser
+  std::vector<double> NIS;
+
+  // FOR TESTING
+  int testCounter;
 
   /**
    * Constructor
@@ -120,7 +126,7 @@ public:
   // Part of Update Chain
   void PredictRadarMeasurement();
   void PredictLaserMeasurement();
-  void UpdateState();
+  void UpdateState(MeasurementPackage meas_package);
 
   /**
    * Updates the state and the state covariance matrix using a laser measurement
